@@ -42,7 +42,21 @@ int sampleDistance() {
 	return avg / nSamples;
 }
 
-int findPath() {
+/*
+ * sampleLight: samples nSamples times and returns the average reading
+ * of the light sensor
+ * paramters: none
+ * returns (int) avg / nSamples
+*/
+int sampleLight() {
+	int avg = 0;
+	for (int i = 0; i < nSamples; i++) {
+		avg += SensorValue(lightSensor); // Sample Sonar
+	}
+	return avg / nSamples;
+}
+
+/*int findPath() {
 	// Set servo to initial position and wait for it to get there
 	motor[myServo] = -127;
 	sleep(1000);
@@ -69,6 +83,40 @@ int findPath() {
 	} else {
 		return NULL;
 	}
+}
+*/
+
+void findPath(int *distanceValue,int *distanceIndex, int *lightValue, int *lightIndex) {
+	// Set servo to initial position and wait for it to get there
+	motor[myServo] = -127;
+	sleep(1000);
+
+	// Declare some variables for later
+	int maxDistance = -1,maxDistanceIndex = -1, minLightIndex = -1;
+	int minLight = 2000;
+	int distance,light;
+	// loop through possible positions for light sensor
+	for (int i = -127; i < 128; i+=2) {
+		// set position
+		motor[myServo] = i;
+		sleep(20);
+		// take reading
+		distance = sampleDistance();
+		light = sampleLight();
+		// adjust position of the strongest light source if needed
+		if (distance > maxDistance) {
+			maxDistance = distance;
+			maxDistanceIndex = i;
+		}
+		if (light < minLight) {
+			minLight = light;
+			minLightIndex = i;
+		}
+	}
+	*distanceValue = maxDistance;
+	*distanceIndex = maxDistanceIndex;
+	*lightValue = minLight;
+	*lightIndex = minLightIndex;
 }
 
 /*
@@ -278,7 +326,7 @@ void turnAround(int leftDistance, int rightDistance) {
 task main()
 {
 	sleep(5000);
-	int distance;
+	int distance, distanceIndex, light, lightIndex;
 	moveForward();
 	// Maze Search Algorithm
 	while (true) {
@@ -326,8 +374,8 @@ task main()
 			moveForward();
 		}
 		sleep(1000);*/
-		int index = findPath();
-		if (index != NULL) {
+		findPath(&distance, &distanceIndex, &light, &lightIndex);
+		/*if (index != NULL) {
 			//turn index light
 			if (index < 0) {
 				// negative / turn right
@@ -348,5 +396,6 @@ task main()
 		} else {
 			turnRight();
 		}
+		*/
 	}
 }
