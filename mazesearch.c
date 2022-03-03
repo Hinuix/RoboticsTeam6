@@ -1,9 +1,7 @@
 #pragma config(Sensor, in1,    lightSensor,    sensorReflection)
 #pragma config(Sensor, dgtl1,  sonarInput,     sensorSONAR_cm)
 #pragma config(Sensor, dgtl5,  leftLimitSwitch, sensorTouch)
-#pragma config(Sensor, dgtl6,  rightLimitSwitch, sensorTouch)
-#pragma config(Sensor, dgtl10, bumpLeft,       sensorTouch)
-#pragma config(Sensor, dgtl11, bumpRight,      sensorTouch)
+#pragma config(Sensor, dgtl6,  startButton,    sensorTouch)
 #pragma config(Motor,  port2,           rightMotor,    tmotorVex393_MC29, openLoop)
 #pragma config(Motor,  port3,           leftMotor,     tmotorVex393_MC29, openLoop)
 #pragma config(Motor,  port4,           myServo,       tmotorServoStandard, openLoop)
@@ -14,7 +12,7 @@
 #define MotorTurnTime 710
 #define ForwardTurn 65
 #define BackwardTurn -55
-#define MotorForwardTime 700
+#define MotorForwardTime 1000
 #define MotorForwardSpeed 70
 #define MotorReverseTime 700
 #define MotorReverseSpeed -60
@@ -33,7 +31,7 @@ void stopMovement() {
  * of the ultrasonic sensor
  * paramters: none
  * returns (int) avg / nSamples
-*/
+ */
 int sampleDistance() {
 	int avg = 0;
 	for (int i = 0; i < nSamples; i++) {
@@ -56,54 +54,23 @@ int sampleLight() {
 	return avg / nSamples;
 }
 
-/*int findPath() {
-	// Set servo to initial position and wait for it to get there
-	motor[myServo] = -127;
-	sleep(1000);
-
-	// Declare some variables for later
-	int max = -1;
-	int maxIndex = -1;
-	int distance;
-	// loop through possible positions for light sensor
-	for (int i = -127; i < 128; i+=2) {
-		// set position
-		motor[myServo] = i;
-		sleep(40);
-		// take reading
-		distance = sampleDistance();
-		// adjust position of the strongest light source if needed
-		if (distance > max) {
-			max = distance;
-			maxIndex = i;
-		}
-	}
-	if (max > 20) {
-		return maxIndex;
-	} else {
-		return NULL;
-	}
-}
-*/
-
 void findPath(int *distanceValue,int *distanceIndex, int *lightValue, int *lightIndex) {
 	// Set servo to initial position and wait for it to get there
 	motor[myServo] = -127;
-	sleep(1000);
+	sleep(500);
 
 	// Declare some variables for later
-	int maxDistance = -1,maxDistanceIndex = -1, minLightIndex = -1;
+	int maxDistance = -1,maxDistanceIndex = NULL, minLightIndex = NULL;
 	int minLight = 2000;
 	int distance,light;
 	// loop through possible positions for light sensor
-	for (int i = -127; i < 128; i+=2) {
+	for (int i = -127; i < 128; i+=4) {
 		// set position
 		motor[myServo] = i;
-		sleep(20);
+		wait1Msec(50);
 		// take reading
-		distance = sampleDistance();
+		distance = SensorValue(sonarInput);
 		light = sampleLight();
-		// adjust position of the strongest light source if needed
 		if (distance > maxDistance) {
 			maxDistance = distance;
 			maxDistanceIndex = i;
@@ -120,47 +87,10 @@ void findPath(int *distanceValue,int *distanceIndex, int *lightValue, int *light
 }
 
 /*
- * findLight: samples lightSensor values at every position for our servo and returns the
- * servo position where the strongest light source is
- * paramters: none
- * returns (int) minIndex/servo position where light is strongest
-*/
-int findLight() {
-	// Set servo to initial position and wait for it to get there
-	motor[myServo] = -127;
-	sleep(1000);
-
-	// Declare some variables for later
-	int min = 2000;
-	int minIndex = -1;
-	int sensorValue;
-	// loop through possible positions for light sensor
-	for (int i = -127; i < 128; i+=5) {
-		// set position
-		motor[myServo] = i;
-		sleep(20);
-		// take reading
-		sensorValue = SensorValue(lightSensor);
-		// adjust position of the strongest light source if needed
-		if (sensorValue < min) {
-			min = sensorValue;
-			minIndex = i;
-		}
-	}
-	writeDebugStream("Min Light Value: %d | Min Index: %d\n",min,minIndex);
-	if (min < 300) {
-		return minIndex;
-	} else {
-		return NULL;
-	}
-}
-
-/*
  * sampleLimitValue: samples left and right limit switches
  * paramters: none
  * returns (int) 1 if either one is pressed
  * returns (int) 0 if they are not pressed
-*/
 int sampleLimitValue() {
 	int leftLimit = SensorValue(leftLimitSwitch);
 	int rightLimit = SensorValue(rightLimitSwitch);
@@ -172,24 +102,27 @@ int sampleLimitValue() {
 		return(0);
 	}
 }
+*/
 
 /*
  * sampleBumpValue: samples left and right bump switches
  * paramters: none
  * returns (int) 1 if either one is pressed
  * returns (int) 0 if they are not pressed
-*/
 int sampleBumpValue() {
 	int leftBump = SensorValue(bumpLeft);
 	int rightBump = SensorValue(bumpRight);
 
-	if(rightBump == 1 | leftBump == 1) {
-		return(1);
+	if(rightBump == 1) {
+		return 2;
 	}
-	else {
-		return(0);
+	else if (leftBump == 1) {
+		return 1;
+	} else {
+		return 0;
 	}
 }
+*/
 
 /*
  * lookRight: measure the distance to the right of the robot
@@ -300,6 +233,7 @@ void moveReverse() {
 	stopMovement();
 }
 
+/*
 void turnAround(int leftDistance, int rightDistance) {
 	moveReverse();
 	if (rightDistance > ThresholdDistance != leftDistance > ThresholdDistance) { // logical XOR
@@ -321,81 +255,109 @@ void turnAround(int leftDistance, int rightDistance) {
 		}
 	}
 }
+*/
 
 
 task main()
 {
-	sleep(5000);
-	int distance, distanceIndex, light, lightIndex;
-	moveForward();
-	// Maze Search Algorithm
 	while (true) {
-		// Uncomment to test Calibration of ultrasonic sensor
-		// and the right and left DC motors
-		/*
-		writeDebugStream("Right Distance: %d\n", lookRight());
-		writeDebugStream("Front Distance: %d\n", lookForward());
-		writeDebugStream("Left Distance: %d\n", lookLeft());
-		sleep(3000);
+		while (SensorValue(startButton) != 1);
+		wait1Msec(1000);
+		//int distance, distanceIndex, light, lightIndex;
 		moveForward();
-		wait1Msec(1000);
-		turnLeft();
-		wait1Msec(1000);
-		turnRight();
-		wait1Msec(1000);
-		moveReverse();
-		sleep(10000);
+		// Maze Search Algorithm
+		while (true) {
+			// Uncomment to test Calibration of ultrasonic sensor
+			// and the right and left DC motors
+			/*
+			writeDebugStream("Right Distance: %d\n", lookRight());
+			writeDebugStream("Front Distance: %d\n", lookForward());
+			writeDebugStream("Left Distance: %d\n", lookLeft());
+			sleep(3000);
+			moveForward();
+			wait1Msec(1000);
+			turnLeft();
+			wait1Msec(1000);
+			turnRight();
+			wait1Msec(1000);
+			moveReverse();
+			sleep(10000);
+			//writeDebugStream("bumbPressed?: %d\n", sampleBumpValue());
+			//writeDebugStream("limitPressed?: %d\n", sampleLimitValue());
+			writeDebugStream("minIndexForLight: %d\n", findLight());
+			//sleep(abs(lightPosition)*2); **Use this for findLight()**
+			sleep(3000);
+			*/
+			// END CALIBRATION CODE
 
-
-		//writeDebugStream("bumbPressed?: %d\n", sampleBumpValue());
-		//writeDebugStream("limitPressed?: %d\n", sampleLimitValue());
-		writeDebugStream("minIndexForLight: %d\n", findLight());
-		//sleep(abs(lightPosition)*2); **Use this for findLight()**
-		sleep(3000);
-		*/
-		// END CALIBRATION CODE
-
-		/*int rightDistance = lookRight();
-		int leftDistance = lookLeft();
-		int forwardDistance = lookForward();
-		// BEGIN MAZE TRAVERSAL ALGORITHM
-		if ((distance = sampleDistance()) < ThresholdDistance || sampleBumpValue()) {
-			// Obstacle ahead, turn around
-			turnAround(leftDistance, rightDistance);
-		} else {
-			// Move Forward, look for turns
-			if (rightDistance > 60) {
-				// Turn Right, there is space
-				turnRight();
-			} else if (leftDistance > 60) {
-				// Turn Left, there is space
+			/*if (sampleBumpValue() == 2) {
+				// Turn Left
+				moveReverse();
 				turnLeft();
-			}
-			moveForward();
-		}
-		sleep(1000);*/
-		findPath(&distance, &distanceIndex, &light, &lightIndex);
-		/*if (index != NULL) {
-			//turn index light
-			if (index < 0) {
-				// negative / turn right
-			  motor[leftMotor]  = 75;
-    		motor[rightMotor] = -75;
-			} else {
-				// positive / turn left
-			  motor[leftMotor]  = -75;
-    		motor[rightMotor] = 75;
-			}
-			sleep(abs(index)*4);
-			stopMovement();
-			moveForward();
-			stopMovement();
-			if (sampleBumpValue()) {
+			} else if (sampleBumpValue() == 1) {
+				// Turn Right
+				moveReverse();
+				turnRight();
+			}*/
+			if (SensorValue(leftLimitSwitch)) {
+				moveReverse();
 				moveReverse();
 			}
-		} else {
-			turnRight();
+			// Adjust position in chute
+			int left = lookLeft();
+			if (SensorValue(startButton) == 1) {
+				break;
+			}
+			int right = lookRight();
+			if (SensorValue(startButton) == 1) {
+				break;
+			}
+			int forward = lookForward();
+			if (SensorValue(startButton) == 1) {
+				break;
+			}
+			if (forward < 30 && (left < 30 || right < 30)) {
+				if (left > 30) {
+					turnLeft();
+				} else {
+					turnRight();
+				}
+			}
+			else if (abs(left-right) > 20) {
+				if (left > right) {
+					motor[leftMotor]  = 0;
+		    	motor[rightMotor] = 75;
+				} else {
+					motor[leftMotor]  = 75;
+		    	motor[rightMotor] = 0;
+				}
+				wait1Msec(abs(right-left)*5);
+				stopMovement();
+			}
+			moveForward();
+			stopMovement();
+			//findPath(&distance, &distanceIndex, &light, &lightIndex);
+			//writeDebugStream("%d %d %d %d\n",distance, distanceIndex, light, lightIndex);
+			/*else if (distanceIndex != NULL) {
+					if (distanceIndex < 0) {
+						// negative / turn right
+					  motor[leftMotor]  = 75;
+		    		motor[rightMotor] = -75;
+					} else {
+						// positive / turn left
+					  motor[leftMotor]  = -75;
+		    		motor[rightMotor] = 75;
+					}
+					sleep(abs(distanceIndex)*7);
+					stopMovement();
+					wait1Msec(1000);
+					moveForward();
+					stopMovement();
+			} else {
+				moveReverse();
+				turnLeft();
+			}*/
 		}
-		*/
+		wait1Msec(2000);
 	}
 }
