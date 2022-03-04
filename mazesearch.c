@@ -1,7 +1,8 @@
 #pragma config(Sensor, in1,    lightSensor,    sensorReflection)
 #pragma config(Sensor, dgtl1,  sonarInput,     sensorSONAR_cm)
-#pragma config(Sensor, dgtl5,  leftLimitSwitch, sensorTouch)
-#pragma config(Sensor, dgtl6,  startButton,    sensorTouch)
+#pragma config(Sensor, dgtl5,  leftBump,       sensorTouch)
+#pragma config(Sensor, dgtl6,  rightBump,      sensorTouch)
+#pragma config(Sensor, dgtl7,  startButton,    sensorTouch)
 #pragma config(Motor,  port2,           rightMotor,    tmotorVex393_MC29, openLoop)
 #pragma config(Motor,  port3,           leftMotor,     tmotorVex393_MC29, openLoop)
 #pragma config(Motor,  port4,           myServo,       tmotorServoStandard, openLoop)
@@ -14,9 +15,10 @@
 #define BackwardTurn -55
 #define MotorForwardTime 1000
 #define MotorForwardSpeed 70
-#define MotorReverseTime 700
-#define MotorReverseSpeed -60
-#define ThresholdDistance 20
+#define MotorReverseTime 800
+#define MotorReverseSpeed -70
+#define ForwardThresholdDistance 45
+#define SideThresholdDistance 30
 
 /*
  * stopMovement: sets the motion of the robot's wheels to zero
@@ -109,9 +111,10 @@ int sampleLimitValue() {
  * paramters: none
  * returns (int) 1 if either one is pressed
  * returns (int) 0 if they are not pressed
+*/
 int sampleBumpValue() {
-	int leftBump = SensorValue(bumpLeft);
-	int rightBump = SensorValue(bumpRight);
+	int leftBump = SensorValue(leftBump);
+	int rightBump = SensorValue(rightBump);
 
 	if(rightBump == 1) {
 		return 2;
@@ -122,7 +125,7 @@ int sampleBumpValue() {
 		return 0;
 	}
 }
-*/
+
 
 /*
  * lookRight: measure the distance to the right of the robot
@@ -184,18 +187,6 @@ int lookForward() {
 }
 
 /*
- * moveForward: sets the motion of the robot to
- * the set MotorForwardSpeed constant for MotorForwardTime milliseconds
- * and then stops
- * paramters: none
-*/void moveForward() {
-	motor[rightMotor] = (int)((float)MotorForwardSpeed * 1.1);
-	motor[leftMotor] = MotorForwardSpeed;
-	wait1Msec(MotorForwardTime);
-	stopMovement();
-}
-
-/*
  * turnRight: sets the motion of the left motor to the constant
  * ForwardTurn and sets the motion of the right motor to BackwardTurn
  * and then stops motion by calling stopMovement()
@@ -230,6 +221,28 @@ void turnLeft() {
 void moveReverse() {
 	motor[leftMotor] = motor[rightMotor] = MotorReverseSpeed;
 	wait1Msec(MotorReverseTime);
+	stopMovement();
+}
+
+/*
+ * moveForward: sets the motion of the robot to
+ * the set MotorForwardSpeed constant for MotorForwardTime milliseconds
+ * and then stops
+ * paramters: none
+*/void moveForward() {
+	motor[rightMotor] = (int)((float)MotorForwardSpeed * 1.1);
+	motor[leftMotor] = MotorForwardSpeed;
+	wait1Msec(MotorForwardTime);
+	int bump = sampleBumpValue();
+	if (bump == 2) {
+		writeDebugStream("right\n");
+		// Turn Left
+		moveReverse();
+	} else if (bump == 1) {
+		writeDebugStream("left\n");
+		// Turn Right
+		moveReverse();
+	}
 	stopMovement();
 }
 
@@ -289,20 +302,11 @@ task main()
 			sleep(3000);
 			*/
 			// END CALIBRATION CODE
-
-			/*if (sampleBumpValue() == 2) {
-				// Turn Left
-				moveReverse();
-				turnLeft();
-			} else if (sampleBumpValue() == 1) {
-				// Turn Right
-				moveReverse();
-				turnRight();
-			}*/
-			if (SensorValue(leftLimitSwitch)) {
+			/*if (SensorValue(leftLimitSwitch)) {
 				moveReverse();
 				moveReverse();
 			}
+			*/
 			// Adjust position in chute
 			int left = lookLeft();
 			if (SensorValue(startButton) == 1) {
@@ -316,14 +320,18 @@ task main()
 			if (SensorValue(startButton) == 1) {
 				break;
 			}
-			if (forward < 30 && (left < 30 || right < 30)) {
-				if (left > 30) {
+			if (forward < ForwardThresholdDistance && (left < SideThresholdDistance && right < SideThresholdDistance)) {
+				turnLeft();
+				turnLeft();
+				moveForward();
+			} else if (forward < ForwardThresholdDistance) {
+				if (left > right) {
 					turnLeft();
 				} else {
 					turnRight();
 				}
-			}
-			else if (abs(left-right) > 20) {
+				moveForward();
+			} else if (abs(left-right) > 10) {
 				if (left > right) {
 					motor[leftMotor]  = 0;
 		    	motor[rightMotor] = 75;
@@ -333,9 +341,10 @@ task main()
 				}
 				wait1Msec(abs(right-left)*5);
 				stopMovement();
+				moveForward();
+			} else {
+				moveForward();
 			}
-			moveForward();
-			stopMovement();
 			//findPath(&distance, &distanceIndex, &light, &lightIndex);
 			//writeDebugStream("%d %d %d %d\n",distance, distanceIndex, light, lightIndex);
 			/*else if (distanceIndex != NULL) {
