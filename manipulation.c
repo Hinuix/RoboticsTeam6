@@ -127,9 +127,10 @@ void grabCan() {
 		dist = 6;
 	}
 	openClaw();
-	gotoo(-65 + ((dist - 6)*2),130 - ((dist - 6)*2));
+	gotoo(-65,130);
+	gotoo(-65 + ((dist - 6)*1.4),130 - ((dist - 6)*2.4));
 	closeClaw();
-	gotoo(-65 + ((dist - 6)*1) - 5,130 - ((dist - 6)*2));
+	gotoo(-65 + ((dist - 6)*0.9) - 5,130 - ((dist - 6)*1.8));
 	gotoo(-75,130);
 	gotoo(-75,100);
 	throwCan();
@@ -145,9 +146,8 @@ task main()
 		// MANUAL CALIBRATION BLOCK
 		/*while (true) {
 			motor[elbow] = -20;
-			motor[shoulder] = 50;
+			//motor[shoulder] = 50;
 		}*/
-
 		//----------------------------------
 		// DO NOT CHANGE - INITIAL CALIBRATION TO SAFE VALUES
 		/*SensorValue[elbowEncoder] = 0;
@@ -187,6 +187,7 @@ task main()
 			}
 			//gotoo(-80,0);
 			reset();
+			grabCan();
 			grabCan();
 			grabCan();
 			// RESET POSITION
